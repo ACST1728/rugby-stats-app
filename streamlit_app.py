@@ -1,4 +1,4 @@
-# streamlit_app.py — entrypoint with safe first-time setup
+# streamlit_app.py — entrypoint with safe first-time setup (thread-safe SQLite)
 import os, sqlite3, bcrypt, importlib
 import streamlit as st
 
@@ -8,17 +8,19 @@ DB_PATH = os.environ.get("RUGBY_DB_PATH", "rugby_stats.db")
 
 @st.cache_resource
 def _conn():
-    return sqlite3.connect(DB_PATH)
+    # Important: allow use across Streamlit threads
+    return sqlite3.connect(DB_PATH, check_same_thread=False)
 
 def _ensure_users_table(conn: sqlite3.Connection):
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS users (
+    # Create users table if missing
+    conn.execute(
+        """CREATE TABLE IF NOT EXISTS users (
             username TEXT PRIMARY KEY,
             pass_hash BLOB NOT NULL,
             role TEXT NOT NULL,
             active INTEGER NOT NULL DEFAULT 1
-        );
-    """)
+        );"""
+    )
     conn.commit()
 
 def _count_users(conn: sqlite3.Connection) -> int:
@@ -44,7 +46,6 @@ def _create_admin(conn: sqlite3.Connection, username: str, password: str):
 def first_time_setup():
     st.title("🔐 First-time Setup")
     st.write("No users found. Create your **first admin** to get started.")
-    created = False
     with st.form("create_admin"):
         u = st.text_input("Admin username", placeholder="e.g. coach_scott")
         p1 = st.text_input("Password", type="password")
