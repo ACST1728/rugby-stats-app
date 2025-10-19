@@ -1,8 +1,9 @@
-streamlit==1.32.0
-pandas==2.2.2
-numpy==1.26.4
-pillow==10.3.0
-altair==5.2.0
+streamlit==1.38.0      # recent, works on py3.13
+pandas==2.3.3          # py3.13 wheels available
+numpy==2.3.2           # py3.13 wheels available
+pillow==11.0.0         # py3.13 wheels available
+altair==5.3.0
 xlsxwriter==3.2.0
 dropbox==11.36.2
-bcrypt==4.1.2
+bcrypt==4.2.0
+
