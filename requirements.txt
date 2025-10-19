@@ -1,9 +1,8 @@
-# Cloud-safe & compatible with Streamlit 1.38 (Pillow <11 constraint)
+# Cloud-safe deps for Python 3.13 on Streamlit Cloud
 streamlit==1.38.0
 pandas==2.3.3
 numpy==2.3.2
-pillow==10.4.0
+pillow==10.4.0         # streamlit 1.38 requires pillow < 11
 altair==5.3.0
 xlsxwriter==3.2.0
-dropbox==11.36.2
 bcrypt==4.2.0
