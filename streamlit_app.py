@@ -161,7 +161,7 @@ def user_management_panel():
         return
 
     for rec in users:
-        with st.expander(f\"{rec['username']}  —  {rec['role']}  —  {'Active' if rec['active'] else 'Inactive'}\", expanded=False):
+        with st.expander(f"{rec['username']}  —  {rec['role']}  —  {'Active' if rec['active'] else 'Inactive'}", expanded=False):
             c1, c2, c3, c4 = st.columns([1,1,1,1])
             with c1:
                 new_role = st.selectbox("Role", ROLES, index=ROLES.index(rec['role']), key=f"role_{rec['username']}")
