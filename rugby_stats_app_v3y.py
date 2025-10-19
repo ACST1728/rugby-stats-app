@@ -5,6 +5,9 @@ import pandas as pd
 import streamlit as st
 import traceback
 
+# Use Streamlit Cloud writable path or fallback for local runs
+DB_FILE = os.environ.get("RUGBY_DB_PATH", "/mount/data/rugby_stats.db")
+
 import base64, io
 
 def get_setting(conn, key, default=None):
@@ -342,11 +345,18 @@ DEFAULT_POINTS = {"try":5,"conversion":2,"penalty":3,"drop_goal":3}
 EVENTS_CATALOG: List[str] = ["try","conversion","penalty","drop_goal","carry_made","tackle_made","tackle_missed","turnover_won","turnover_conceded","line_break","offload","handling_error","kick_gain","kick_no_gain","assist"]
 
 @st.cache_resource(show_spinner=False)
-def get_conn()->sqlite3.Connection:
-    conn=sqlite3.connect(DB_FILE,check_same_thread=False); conn.row_factory=sqlite3.Row
-    with conn: conn.executescript(SCHEMA); _migrate_existing(conn)
+def get_conn() -> sqlite3.Connection:
+    conn = sqlite3.connect(DB_FILE, check_same_thread=False)
+    conn.row_factory = sqlite3.Row
+    with conn:
+        conn.executescript(SCHEMA)
+        _migrate_existing(conn)
     if not conn.execute("SELECT 1 FROM settings WHERE key LIKE 'points.%' LIMIT 1").fetchone():
-        for k,v in DEFAULT_POINTS.items(): conn.execute("INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)",(f"points.{k}",str(v)))
+        for k, v in DEFAULT_POINTS.items():
+            conn.execute(
+                "INSERT OR REPLACE INTO settings(key,value) VALUES(?,?)",
+                (f"points.{k}", str(v))
+            )
     return conn
 
 def _migrate_existing(conn):
