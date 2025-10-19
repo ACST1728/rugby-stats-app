@@ -1,8 +1,8 @@
-# streamlit_app.py — entrypoint with first-time setup (admin bootstrap)
+# streamlit_app.py — entrypoint with safe first-time setup
 import os, sqlite3, bcrypt, importlib
 import streamlit as st
 
-# IMPORTANT: Do NOT call st.set_page_config here. The main app will handle it if needed.
+# Do NOT call st.set_page_config here. The main app (rugby_stats_app_v3y.py) handles it.
 
 DB_PATH = os.environ.get("RUGBY_DB_PATH", "rugby_stats.db")
 
@@ -22,8 +22,12 @@ def _ensure_users_table(conn: sqlite3.Connection):
     conn.commit()
 
 def _count_users(conn: sqlite3.Connection) -> int:
-    cur = conn.execute("SELECT COUNT(*) FROM users")
-    return int(cur.fetchone()[0])
+    try:
+        cur = conn.execute("SELECT COUNT(*) FROM users")
+        return int(cur.fetchone()[0])
+    except sqlite3.OperationalError:
+        # Table may not exist yet
+        return 0
 
 def _user_exists(conn: sqlite3.Connection, username: str) -> bool:
     cur = conn.execute("SELECT 1 FROM users WHERE username=?", (username,))
@@ -37,9 +41,10 @@ def _create_admin(conn: sqlite3.Connection, username: str, password: str):
             (username, ph, "admin")
         )
 
-def _first_time_setup():
+def first_time_setup():
     st.title("🔐 First-time Setup")
     st.write("No users found. Create your **first admin** to get started.")
+    created = False
     with st.form("create_admin"):
         u = st.text_input("Admin username", placeholder="e.g. coach_scott")
         p1 = st.text_input("Password", type="password")
@@ -48,33 +53,31 @@ def _first_time_setup():
         if go:
             if not u or not p1:
                 st.error("Please enter a username and password.")
-                return
-            if p1 != p2:
+            elif p1 != p2:
                 st.error("Passwords do not match.")
-                return
-            try:
-                conn = _conn()
-                if _user_exists(conn, u):
-                    st.error("That username already exists.")
-                    return
-                _create_admin(conn, u, p1)
-                st.success(f"Admin '{u}' created ✅")
-                st.info("Reloading the app...")
-                st.experimental_rerun()
-            except Exception as e:
-                st.error(f"Failed to create admin: {e}")
+            else:
+                try:
+                    conn = _conn()
+                    if _user_exists(conn, u):
+                        st.error("That username already exists.")
+                    else:
+                        _create_admin(conn, u, p1)
+                        st.success(f"Admin '{u}' created ✅")
+                        st.session_state["_admin_created"] = True
+                except Exception as e:
+                    st.error(f"Failed to create admin: {e}")
+    if st.session_state.get("_admin_created"):
+        st.info("Admin created. Click **Continue** to launch the app.")
+        if st.button("Continue"):
+            st.rerun()
 
 def main():
-    try:
-        conn = _conn()
-        _ensure_users_table(conn)
-        n = _count_users(conn)
-    except Exception as e:
-        st.error(f"Database error: {e}")
-        return
+    conn = _conn()
+    _ensure_users_table(conn)
+    n = _count_users(conn)
 
     if n == 0:
-        _first_time_setup()
+        first_time_setup()
         return
 
     # Hand off to the main app
