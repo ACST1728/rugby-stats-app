@@ -1,18 +1,23 @@
-# streamlit_app.py — entrypoint with safe first-time setup (thread-safe SQLite)
-import os, sqlite3, bcrypt, importlib
+# streamlit_app.py — entrypoint with early page_config + safe first-time setup
+import importlib, os, sqlite3, bcrypt
 import streamlit as st
 
-# Do NOT call st.set_page_config here. The main app (rugby_stats_app_v3y.py) handles it.
+# 1) MUST be the first Streamlit command on the page
+st.set_page_config(page_title="Rugby Stats v3y", layout="wide")
+
+# 2) Avoid double-calling errors if the app calls set_page_config again
+def _noop(*args, **kwargs):
+    return None
+st.set_page_config = _noop
 
 DB_PATH = os.environ.get("RUGBY_DB_PATH", "rugby_stats.db")
 
 @st.cache_resource
 def _conn():
-    # Important: allow use across Streamlit threads
+    # Thread-safe for Streamlit
     return sqlite3.connect(DB_PATH, check_same_thread=False)
 
 def _ensure_users_table(conn: sqlite3.Connection):
-    # Create users table if missing
     conn.execute(
         """CREATE TABLE IF NOT EXISTS users (
             username TEXT PRIMARY KEY,
@@ -28,7 +33,6 @@ def _count_users(conn: sqlite3.Connection) -> int:
         cur = conn.execute("SELECT COUNT(*) FROM users")
         return int(cur.fetchone()[0])
     except sqlite3.OperationalError:
-        # Table may not exist yet
         return 0
 
 def _user_exists(conn: sqlite3.Connection, username: str) -> bool:
@@ -81,7 +85,7 @@ def main():
         first_time_setup()
         return
 
-    # Hand off to the main app
+    # Hand off to main app
     mod = importlib.import_module("rugby_stats_app_v3y")
     if hasattr(mod, "main"):
         mod.main()
