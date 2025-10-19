@@ -9,7 +9,7 @@ st.set_page_config(page_title="Rugby Stats v3y", layout="wide")
 def _noop(*args, **kwargs): return None
 st.set_page_config = _noop
 
-DB_PATH = os.environ.get("RUGBY_DB_PATH", "rugby_stats.db")
+DB_PATH = os.environ.get("RUGBY_DB_PATH", "/mount/data/rugby_stats.db")
 ROLES = ["admin", "editor", "viewer"]
 
 @st.cache_resource
