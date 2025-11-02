@@ -1,0 +1,78 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Video Hotkeys</title>
+  <style>
+    body { margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background:#000; color:#fff; }
+    .wrap { padding: 8px; }
+    video, iframe { width: 100%; aspect-ratio: 16/9; border:0; border-radius: 8px; background:#000; }
+    .bar { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-top:8px; font-size:14px;}
+    .kbd { background:#111; color:#fff; padding:2px 6px; border-radius:4px; font-size:12px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div id="player-area">
+      <video id="vid" controls playsinline></video>
+    </div>
+    <div class="bar">
+      <div>⏱ <span id="clock">00:00</span></div>
+      <div class="kbd">Space</div><div>bookmark</div>
+      <div class="kbd">J/K</div><div>±2s</div>
+      <div class="kbd">A/D</div><div>±0.2s</div>
+      <div class="kbd">[ / ]</div><div>tiny nudge</div>
+      <div class="kbd">Q/E</div><div>speed</div>
+      <div>⚡ <span id="speed">1.0x</span></div>
+    </div>
+  </div>
+  <script>
+    const parentWindow = window.parent;
+    function send(payload){ parentWindow.postMessage({isStreamlitMessage:true, type:'streamlit:setComponentValue', value:payload}, '*'); }
+    function setHeight(px){ parentWindow.postMessage({isStreamlitMessage:true, type:'streamlit:setFrameHeight', height:px}, '*'); }
+    setHeight(520);
+
+    let lastUrl=null, lastRate=1.0;
+    const v=document.getElementById('vid'); const clock=document.getElementById('clock'); const speed=document.getElementById('speed');
+
+    function fmt(t){ t=Math.max(0, Math.floor(t||0)); const m=String(Math.floor(t/60)).padStart(2,'0'); const s=String(t%60).padStart(2,'0'); return m+':'+s; }
+
+    function render(args){
+      const url=String(args.url||''); const start=Number(args.start||0); const paused=!!args.paused; const rate=Number(args.rate||1.0);
+      const seek_to=(typeof args.seek_to==='number') ? Number(args.seek_to) : null;
+      if(lastUrl!==url){
+        v.src=url; try{ v.currentTime=start; }catch(e){}
+        if(!paused){ v.play().catch(()=>{}); }
+        lastUrl=url; lastRate=rate;
+      }
+      if(lastRate!==rate){ try{ v.playbackRate=rate; }catch(e){} speed.textContent=(rate||1.0).toFixed(2)+'x'; lastRate=rate; }
+      if(seek_to!==null){ try{ v.currentTime=seek_to; v.play().catch(()=>{}); }catch(e){} }
+    }
+
+    window.addEventListener('message', (event)=>{
+      const data=event.data;
+      if(!data || !data.isStreamlitMessage) return;
+      if(data.type==='streamlit:render'){
+        const args=data.args||{}; render(args);
+      }
+    });
+
+    setInterval(()=>{ clock.textContent=fmt(v.currentTime||0); }, 200);
+
+    document.addEventListener('keydown', (e)=>{
+      if(e.target && (/input|textarea/i).test(e.target.tagName)) return;
+      const k=e.key.toLowerCase();
+      if(k===' '){ e.preventDefault(); send({type:'bookmark', t: v.currentTime||0}); }
+      if(k==='j'){ v.currentTime=(v.currentTime||0)-2; }
+      if(k==='k'){ v.currentTime=(v.currentTime||0)+2; }
+      if(k==='a'){ v.currentTime=(v.currentTime||0)-0.2; }
+      if(k==='d'){ v.currentTime=(v.currentTime||0)+0.2; }
+      if(k==='['){ v.currentTime=(v.currentTime||0)-0.04; }
+      if(k===']'){ v.currentTime=(v.currentTime||0)+0.04; }
+      if(k==='q'){ v.playbackRate=Math.max(0.1,(v.playbackRate||1)-0.1); speed.textContent=v.playbackRate.toFixed(2)+'x'; }
+      if(k==='e'){ v.playbackRate=Math.min(2.5,(v.playbackRate||1)+0.1); speed.textContent=v.playbackRate.toFixed(2)+'x'; }
+    });
+  </script>
+</body>
+</html>
