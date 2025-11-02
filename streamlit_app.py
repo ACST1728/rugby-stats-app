@@ -2,13 +2,21 @@ import os, sqlite3, bcrypt
 import streamlit as st
 
 def _db_path() -> str:
-    # Prefer secret, then env var, then /mount/data on Streamlit Cloud
+    # 1) Prefer secret
     try:
         if "RUGBY_DB_PATH" in st.secrets:
             return str(st.secrets["RUGBY_DB_PATH"])
     except Exception:
         pass
-    return os.environ.get("RUGBY_DB_PATH", "/mount/data/rugby_stats.db")
+
+    # 2) Prefer env var if set
+    if "RUGBY_DB_PATH" in os.environ:
+        return os.environ["RUGBY_DB_PATH"]
+
+    # 3) Default — LOCAL storage inside app directory (works on Streamlit Cloud)
+    local_dir = ".streamlit_storage"
+    os.makedirs(local_dir, exist_ok=True)
+    return os.path.join(local_dir, "rugby_stats.db")
 
 DB_PATH = _db_path()
 
